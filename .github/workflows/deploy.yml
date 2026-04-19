@@ -27,9 +27,6 @@ jobs:
       run: |
         python -m pip install uv
         uv sync
-    - name: run
-      run: |
-        uv run uvicorn app.main:app --port 8000
     - name: Test with pytest
       env:
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -64,8 +61,9 @@ jobs:
             
             # 使用 uv 的虚拟环境执行数据库迁移 (如果需要)
             # uv run alembic upgrade head
-            
+
             # 3. 启动命令 (请根据您服务器的实际管理工具解除注释并修改)
+            uv run uvicorn app.main:app --port 8000
             
             # 方案A: 使用 Supervisor 或 Systemd (推荐生产环境使用，确保 systemd 指向 .venv/bin/uvicorn)
             # sudo systemctl restart oauth2-server
