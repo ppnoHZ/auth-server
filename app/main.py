@@ -1,0 +1,147 @@
+import re
+from fastapi import Depends, FastAPI, Form, Query, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.database import get_db
+from app.models import User
+from app.routers import clients, oauth2, users
+from app.security import hash_password, verify_password
+
+app = FastAPI(title="OAuth2 Authorization Server", version="1.0.0")
+templates = Jinja2Templates(directory="app/templates")
+
+# Include routers
+app.include_router(users.router)
+app.include_router(clients.router)
+app.include_router(oauth2.router)
+
+
+# ---------------------------------------------------------------------------
+# Register pages (top-level /register)
+# ---------------------------------------------------------------------------
+@app.get("/register", response_class=HTMLResponse, include_in_schema=False)
+async def register_page(request: Request):
+    return templates.TemplateResponse(name="register.html", request=request, context={})
+
+
+@app.post("/register", include_in_schema=False)
+async def register_submit(
+    request: Request,
+    username: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    confirm_password: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+):
+    if not username or len(username) < 3 or len(username) > 50 or not re.match(r"^[a-zA-Z0-9_]+$", username):
+        return templates.TemplateResponse(
+            name="register.html", request=request,
+            context={"error": "用户名只能包含字母、数字和下划线，且长度必须在3-50个字符之间"},
+        )
+        
+    if not email or len(email) > 100 or not re.match(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)", email):
+        return templates.TemplateResponse(
+            name="register.html", request=request,
+            context={"error": "请输入有效的电子邮件地址"},
+        )
+        
+    if len(password) < 6 or len(password) > 100:
+        return templates.TemplateResponse(
+            name="register.html", request=request,
+            context={"error": "密码长度必须在6-100个字符之间"},
+        )
+        
+    if not (any(c.islower() for c in password) and 
+            any(c.isupper() for c in password) and 
+            any(c.isdigit() for c in password) and 
+            any(not c.isalnum() for c in password)):
+        return templates.TemplateResponse(
+            name="register.html", request=request,
+            context={"error": "密码必须包含大写字母、小写字母、数字和至少一个特殊字符"},
+        )
+
+    if password != confirm_password:
+        return templates.TemplateResponse(
+            name="register.html", request=request,
+            context={"error": "两次输入的密码不一致"},
+        )
+
+    result = await db.execute(
+        select(User).where((User.username == username) | (User.email == email))
+    )
+    if result.scalar_one_or_none():
+        return templates.TemplateResponse(
+            name="register.html", request=request,
+            context={"error": "用户名或邮箱已被注册"},
+        )
+
+    user = User(username=username, email=email, hashed_password=hash_password(password))
+    db.add(user)
+    try:
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        return templates.TemplateResponse(
+            name="register.html", request=request,
+            context={"error": "注册失败，请稍后再试"},
+        )
+
+    return templates.TemplateResponse(
+        name="register.html", request=request,
+        context={"success": "注册成功！您现在可以登录了。"},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Login pages (top-level /login)
+# ---------------------------------------------------------------------------
+@app.get("/login", response_class=HTMLResponse, include_in_schema=False)
+async def login_page(request: Request, next: str = Query("")):
+    return templates.TemplateResponse(name="login.html", request=request, context={"next": next})
+
+
+@app.post("/login", include_in_schema=False)
+async def login_submit(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    next: str = Form(""),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(User).where(User.username == username))
+    user = result.scalar_one_or_none()
+    if user is None or not verify_password(password, user.hashed_password):
+        return templates.TemplateResponse(
+            name="login.html", request=request,
+            context={"next": next, "error": "Invalid username or password"},
+        )
+
+    redirect_url = next or "/"
+    response = RedirectResponse(url=redirect_url, status_code=302)
+    response.set_cookie(
+        key="session_user_id",
+        value=user.id,
+        httponly=True,
+        max_age=3600,
+        samesite="lax",
+    )
+    return response
+
+
+@app.get("/")
+async def root():
+    return {
+        "name": "OAuth2 Authorization Server",
+        "docs": "/docs",
+        "endpoints": {
+            "register": "POST /users/register",
+            "login": "GET /login",
+            "authorize": "GET /oauth2/authorize",
+            "token": "POST /oauth2/token",
+            "introspect": "POST /oauth2/introspect",
+            "revoke": "POST /oauth2/revoke",
+        },
+    }
