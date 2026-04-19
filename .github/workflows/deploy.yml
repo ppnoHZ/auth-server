@@ -1,0 +1,79 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Python application
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 pytest
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: Lint with flake8
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: Test with pytest
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        DATABASE_URL_SYNC: ${{ secrets.DATABASE_URL_SYNC }}
+      run: |
+        pytest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    # 只有在主分支 push 时才执行部署
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Deploy and Start Server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          script: |
+            cd /var/www/oauth2-server
+            
+            # 1. 拉取最新代码
+            git fetch --all
+            git reset --hard origin/main
+            
+            # 2. 激活虚拟环境并安装更新
+            source .venv/bin/activate
+            pip install -e .
+            
+            # 3. 启动命令 (请根据您服务器的实际管理工具解除注释并修改)
+            
+            # 方案A: 使用 Supervisor 或 Systemd (推荐生产环境使用)
+            # sudo systemctl restart oauth2-server
+            
+            # 方案B: 使用 nohup 后台直接启动
+            # pkill -f "uvicorn app.main:app" || true
+            # nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 > app.log 2>&1 &
+            
+            # 方案C: 使用 pm2
+            # pm2 restart oauth2-server || pm2 start uvicorn --name "oauth2-server" -- app.main:app --host 0.0.0.0 --port 8000
