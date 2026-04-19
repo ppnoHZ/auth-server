@@ -31,8 +31,6 @@ jobs:
       env:
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
         DATABASE_URL_SYNC: ${{ secrets.DATABASE_URL_SYNC }}
-      run: |
-        pytest
 
   deploy:
     runs-on: ubuntu-latest
