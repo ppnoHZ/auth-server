@@ -2,7 +2,6 @@
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
 name: Python application
-
 on:
   push:
     branches: [ "main" ]
@@ -29,7 +28,7 @@ jobs:
         uv sync
 
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: build
     # 只有在主分支 push 时才执行部署
     if: github.ref == 'refs/heads/main'
@@ -50,14 +49,14 @@ jobs:
             git reset --hard origin/main
             
             # 2. 安装并使用 uv 同步依赖
-            pip install uv
+            
             uv sync
             
             # 使用 uv 的虚拟环境执行数据库迁移 (如果需要)
             # uv run alembic upgrade head
 
             # 3. 启动命令 (请根据您服务器的实际管理工具解除注释并修改)
-            uv run uvicorn app.main:app --port 8000
+            uv run uvicorn app.main:app --reload --port 8000
             
             # 方案A: 使用 Supervisor 或 Systemd (推荐生产环境使用，确保 systemd 指向 .venv/bin/uvicorn)
             # sudo systemctl restart oauth2-server
