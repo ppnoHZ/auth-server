@@ -17,6 +17,7 @@ from app.schemas import TokenIntrospectResponse, TokenResponse
 from app.security import (
     create_access_token,
     decode_access_token,
+    decode_session_token,
     generate_authorization_code,
     generate_refresh_token,
     hash_password,
@@ -29,10 +30,13 @@ templates = Jinja2Templates(directory="app/templates")
 
 
 # ---------------------------------------------------------------------------
-# Helper: get logged-in user from session cookie
+# Helper: get logged-in user from session token cookie
 # ---------------------------------------------------------------------------
 def _get_session_user_id(request: Request) -> Optional[str]:
-    return request.cookies.get("session_user_id")
+    token = request.cookies.get("session_token")
+    if not token:
+        return None
+    return decode_session_token(token)
 
 
 # ---------------------------------------------------------------------------
@@ -68,9 +72,10 @@ async def authorize_get(
 
     user_id = _get_session_user_id(request)
     if not user_id:
-        # Redirect to login, then come back
-        params = urlencode(dict(request.query_params))
-        return RedirectResponse(url=f"/login?next=/oauth2/authorize?{params}", status_code=302)
+        # Redirect to login, then come back. Use quote to ensure the entire URL with its params is treat as one string
+        from urllib.parse import quote
+        full_path = request.url.path + "?" + request.url.query
+        return RedirectResponse(url=f"/login?next={quote(full_path)}", status_code=302)
 
     return templates.TemplateResponse(
         name="authorize.html", request=request,

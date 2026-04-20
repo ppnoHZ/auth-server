@@ -84,3 +84,36 @@ def verify_pkce(code_verifier: str, code_challenge: str, method: str) -> bool:
         computed = base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
         return computed == code_challenge
     return False
+
+
+# ---------------------------------------------------------------------------
+# Session Token Handling (using JWT)
+# ---------------------------------------------------------------------------
+def create_session_token(user_id: str) -> str:
+    """
+    Create a JWT specifically for session cookies.
+    This hides the user_id from the client.
+    """
+    to_encode = {
+        "sub": str(user_id),
+        "type": "session"
+    }
+    # Session tokens expire according to a fixed duration (e.g., 1 hour)
+    expire = datetime.utcnow() + timedelta(minutes=60)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+
+def decode_session_token(token: str) -> Optional[str]:
+    """
+    Decodes the session JWT and returns the user_id (sub field).
+    """
+    try:
+        payload = jwt.decode(
+            token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
+        )
+        if payload.get("type") != "session":
+            return None
+        return payload.get("sub")
+    except JWTError:
+        return None
