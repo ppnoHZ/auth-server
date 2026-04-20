@@ -28,17 +28,7 @@ jobs:
         uv sync
     - name: Package project
       run: |
-        mkdir -p release
-        rsync -av --exclude='.git' \
-                    --exclude='__pycache__' \
-                    --exclude='.github' \
-                    --exclude='*.pyc' \
-                    --exclude='venv/' \
-                    --exclude='.env' \
-                    . release/
-
-    - name: Zip package
-      run: zip -r fastapi-app.zip release/
+        zip -r fastapi-app.zip . -x "*.git*" "*__pycache__*" "*.github*" "*.pyc" "venv/*" ".env*" ".venv/*" "release/*"
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
@@ -59,10 +49,10 @@ jobs:
         with:
           name: fastapi-app
       - name: Unzip package
-        run: unzip fastapi-app.zip -d ./
+        run: unzip -o fastapi-app.zip -d ./
       # 查看文件（验证是否成功拿到）
       - name: List files
-        run: ls -la release/  
+        run: ls -la 
       - name: Deploy and Start Server
         uses: appleboy/ssh-action@v1.0.3
         with:
