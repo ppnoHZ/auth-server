@@ -26,7 +26,26 @@ jobs:
       run: |
         python -m pip install uv
         uv sync
+    - name: Package project
+      run: |
+        mkdir -p release
+        rsync -av --exclude='.git' \
+                    --exclude='__pycache__' \
+                    --exclude='.github' \
+                    --exclude='*.pyc' \
+                    --exclude='venv/' \
+                    --exclude='.env' \
+                    . release/
 
+    - name: Zip package
+      run: zip -r fastapi-app.zip release/
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: fastapi-app
+        path: fastapi-app.zip
+        retention-days: 30
   deploy:
     runs-on: self-hosted
     needs: build
@@ -34,6 +53,16 @@ jobs:
     if: github.ref == 'refs/heads/main'
     
     steps:
+      # 下载 build 出来的 zip
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: fastapi-app
+      - name: Unzip package
+        run: unzip fastapi-app.zip -d ./
+      # 查看文件（验证是否成功拿到）
+      - name: List files
+        run: ls -la release/  
       - name: Deploy and Start Server
         uses: appleboy/ssh-action@v1.0.3
         with:
