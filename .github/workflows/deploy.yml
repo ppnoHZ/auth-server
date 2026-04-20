@@ -65,7 +65,7 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           port: 22
           source: "fastapi-app.zip"
-          target: "/var/www/oauth2-server"
+          target: "~/www/oauth2-server"
 
       - name: Deploy and Start Server
         uses: appleboy/ssh-action@v1.0.3
@@ -75,7 +75,7 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           port: 22
           script: |
-            cd /var/www/oauth2-server
+            cd ~/www/oauth2-server
             
             # 1. 解压最新上传的包
             unzip -o fastapi-app.zip -d ./
