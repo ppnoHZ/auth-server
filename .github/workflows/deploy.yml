@@ -39,6 +39,7 @@ jobs:
   deploy:
     runs-on: self-hosted
     needs: build
+    environment: prod
     # 只有在主分支 push 时才执行部署
     if: github.ref == 'refs/heads/main'
     
