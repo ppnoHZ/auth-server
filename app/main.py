@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import User
 from app.routers import clients, oauth2, users
-from app.security import hash_password, verify_password
+from app.security import hash_password, verify_password, create_session_token
 
 app = FastAPI(title="OAuth2 Authorization Server", version="1.0.0")
 templates = Jinja2Templates(directory="app/templates")
@@ -99,8 +99,22 @@ async def register_submit(
 # Login pages (top-level /login)
 # ---------------------------------------------------------------------------
 @app.get("/login", response_class=HTMLResponse, include_in_schema=False)
-async def login_page(request: Request, next: str = Query("")):
-    return templates.TemplateResponse(name="login.html", request=request, context={"next": next})
+async def login_page(request: Request):
+    # Get the raw query string to preserve all parameters in 'next'
+    query_params = dict(request.query_params)
+    next_url = query_params.get("next", "")
+    
+    # If there are other parameters besides 'next', they might be part of the next URL's own queries
+    # but FastAPI/Starlette split them. We need to reconstruct the full next URL if it was passed 
+    # as ?next=/path?a=1&b=2 (which arrives as next=/path?a=1 AND b=2)
+    raw_query = request.url.query
+    if "next=" in raw_query:
+        # Extract everything after "next="
+        parts = raw_query.split("next=", 1)
+        if len(parts) > 1:
+            next_url = parts[1]
+
+    return templates.TemplateResponse(name="login.html", request=request, context={"next": next_url})
 
 
 @app.post("/login", include_in_schema=False)
@@ -121,9 +135,13 @@ async def login_submit(
 
     redirect_url = next or "/"
     response = RedirectResponse(url=redirect_url, status_code=302)
+    
+    # Use a session token instead of plain user id
+    session_token = create_session_token(user.id)
+    
     response.set_cookie(
-        key="session_user_id",
-        value=user.id,
+        key="session_token",
+        value=session_token,
         httponly=True,
         max_age=3600,
         samesite="lax",
@@ -139,6 +157,7 @@ async def root():
         "endpoints": {
             "register": "POST /users/register",
             "login": "GET /login",
+            "register_client": "GET /clients/register",
             "authorize": "GET /oauth2/authorize",
             "token": "POST /oauth2/token",
             "introspect": "POST /oauth2/introspect",
