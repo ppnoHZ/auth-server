@@ -49,11 +49,24 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: fastapi-app
-      - name: Unzip package
-        run: unzip -o fastapi-app.zip -d ./
+
+      # - name: Unzip package
+      #   run: unzip -o fastapi-app.zip -d ./
+
       # 查看文件（验证是否成功拿到）
       - name: List files
         run: ls -la 
+
+      - name: Copy zip to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: 22
+          source: "fastapi-app.zip"
+          target: "/var/www/oauth2-server"
+
       - name: Deploy and Start Server
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -64,12 +77,10 @@ jobs:
           script: |
             cd /var/www/oauth2-server
             
-            # 1. 拉取最新代码
-            git fetch --all
-            git reset --hard origin/main
+            # 1. 解压最新上传的包
+            unzip -o fastapi-app.zip -d ./
             
             # 2. 安装并使用 uv 同步依赖
-            
             uv sync
             
             # 使用 uv 的虚拟环境执行数据库迁移 (如果需要)
