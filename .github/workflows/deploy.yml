@@ -28,7 +28,7 @@ jobs:
         uv sync
     - name: Package project
       run: |
-        zip -r fastapi-app.zip . -x "*.git*" "*__pycache__*" "*.github*" "*.pyc" "venv/*" ".env*" ".venv/*" "release/*"
+        zip -r fastapi-app.zip . -x "*.git*" "*.vscode*"  "*__pycache__*" "*.github*" "*.pyc" "venv/*" ".env*" ".venv/*" "release/*"
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4

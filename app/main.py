@@ -137,7 +137,7 @@ async def login_submit(
     response = RedirectResponse(url=redirect_url, status_code=302)
     
     # Use a session token instead of plain user id
-    session_token = create_session_token(user.id)
+    session_token = await create_session_token(user.id)
     
     response.set_cookie(
         key="session_token",

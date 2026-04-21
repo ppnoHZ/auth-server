@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     # Session
     SESSION_SECRET_KEY: str = "change-me-session-secret"
 
+    # Redis (Added)
+    REDIS_URL: str = "redis://localhost:6379/0"
+    SESSION_EXPIRE_SECONDS: int = 3600
+    AUTH_CODE_EXPIRE_SECONDS: int = 600
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 

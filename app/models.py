@@ -40,24 +40,6 @@ class OAuthClient(Base):
     owner = relationship("User", back_populates="clients")
 
 
-class AuthorizationCode(Base):
-    __tablename__ = "authorization_codes"
-
-    id = Column(String(36), primary_key=True, default=generate_uuid)
-    code = Column(String(48), unique=True, nullable=False, index=True)
-    client_id = Column(String(48), nullable=False, index=True)
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
-    redirect_uri = Column(String(500), nullable=False)
-    scope = Column(String(500), default="")
-    code_challenge = Column(String(128), nullable=True)  # PKCE
-    code_challenge_method = Column(String(10), nullable=True)  # "S256" or "plain"
-    state = Column(String(128), nullable=True)
-    expires_at = Column(DateTime, nullable=False)
-    used = Column(Boolean, default=False)
-
-    user = relationship("User")
-
-
 class OAuthToken(Base):
     __tablename__ = "oauth_tokens"
 

@@ -21,6 +21,8 @@ from app.security import (
     generate_authorization_code,
     generate_refresh_token,
     hash_password,
+    store_auth_code,
+    get_and_delete_auth_code,
     verify_password,
     verify_pkce,
 )
@@ -32,11 +34,11 @@ templates = Jinja2Templates(directory="app/templates")
 # ---------------------------------------------------------------------------
 # Helper: get logged-in user from session token cookie
 # ---------------------------------------------------------------------------
-def _get_session_user_id(request: Request) -> Optional[str]:
+async def _get_session_user_id(request: Request) -> Optional[str]:
     token = request.cookies.get("session_token")
     if not token:
         return None
-    return decode_session_token(token)
+    return await decode_session_token(token)
 
 
 # ---------------------------------------------------------------------------
@@ -70,7 +72,7 @@ async def authorize_get(
     if "authorization_code" not in json.loads(client.grant_types):
         raise HTTPException(status_code=400, detail="Client not allowed to use authorization_code grant")
 
-    user_id = _get_session_user_id(request)
+    user_id = await _get_session_user_id(request)
     if not user_id:
         # Redirect to login, then come back. Use quote to ensure the entire URL with its params is treat as one string
         from urllib.parse import quote
@@ -106,7 +108,7 @@ async def authorize_post(
     approved: str = Form("false"),
     db: AsyncSession = Depends(get_db),
 ):
-    user_id = _get_session_user_id(request)
+    user_id = await _get_session_user_id(request)
     if not user_id:
         raise HTTPException(status_code=401, detail="Not logged in")
 
@@ -116,19 +118,16 @@ async def authorize_post(
         return RedirectResponse(url=f"{redirect_uri}?{params}", status_code=302)
 
     code = generate_authorization_code()
-    auth_code = AuthorizationCode(
-        code=code,
-        client_id=client_id,
-        user_id=user_id,
-        redirect_uri=redirect_uri,
-        scope=scope,
-        code_challenge=code_challenge or None,
-        code_challenge_method=code_challenge_method or None,
-        state=state,
-        expires_at=datetime.utcnow() + timedelta(minutes=settings.AUTHORIZATION_CODE_EXPIRE_MINUTES),
-    )
-    db.add(auth_code)
-    await db.flush()
+    auth_data = {
+        "client_id": client_id,
+        "user_id": user_id,
+        "redirect_uri": redirect_uri,
+        "scope": scope,
+        "code_challenge": code_challenge or None,
+        "code_challenge_method": code_challenge_method or None,
+        "state": state,
+    }
+    await store_auth_code(code, auth_data)
 
     params = urlencode({"code": code, "state": state})
     return RedirectResponse(url=f"{redirect_uri}?{params}", status_code=302)
@@ -182,30 +181,24 @@ async def _handle_authorization_code(
     if not code or not redirect_uri:
         raise HTTPException(status_code=400, detail="code and redirect_uri are required")
 
-    result = await db.execute(
-        select(AuthorizationCode).where(AuthorizationCode.code == code)
-    )
-    auth_code = result.scalar_one_or_none()
+    # Retrieve and delete from Redis (one-time use)
+    auth_data = await get_and_delete_auth_code(code)
+    if not auth_data:
+        raise HTTPException(status_code=400, detail="Invalid or expired authorization code")
 
-    if auth_code is None or auth_code.used:
-        raise HTTPException(status_code=400, detail="Invalid or already used authorization code")
-    if auth_code.client_id != client.client_id:
+    if auth_data["client_id"] != client.client_id:
         raise HTTPException(status_code=400, detail="Code was not issued to this client")
-    if auth_code.redirect_uri != redirect_uri:
+    if auth_data["redirect_uri"] != redirect_uri:
         raise HTTPException(status_code=400, detail="redirect_uri mismatch")
-    if auth_code.expires_at < datetime.utcnow():
-        raise HTTPException(status_code=400, detail="Authorization code expired")
 
     # PKCE verification
-    if auth_code.code_challenge:
+    if auth_data["code_challenge"]:
         if not code_verifier:
             raise HTTPException(status_code=400, detail="code_verifier required for PKCE")
-        if not verify_pkce(code_verifier, auth_code.code_challenge, auth_code.code_challenge_method or "plain"):
+        if not verify_pkce(code_verifier, auth_data["code_challenge"], auth_data["code_challenge_method"] or "S256"):
             raise HTTPException(status_code=400, detail="PKCE verification failed")
 
-    auth_code.used = True
-
-    return await _issue_tokens(client.client_id, auth_code.user_id, auth_code.scope, db)
+    return await _issue_tokens(client.client_id, auth_data["user_id"], auth_data["scope"], db)
 
 
 async def _handle_client_credentials(
