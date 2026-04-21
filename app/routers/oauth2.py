@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.dependencies import authenticate_client
-from app.models import AuthorizationCode, OAuthClient, OAuthToken, User
+from app.models import OAuthClient, OAuthToken, User
 from app.schemas import TokenIntrospectResponse, TokenResponse
 from app.security import (
     create_access_token,

@@ -1,16 +1,16 @@
 import json
 from typing import Optional, Any
-import aioredis
+import redis.asyncio as redis
 from app.config import settings
 
 class RedisManager:
     def __init__(self, url: str):
         self.url = url
-        self.redis: Optional[aioredis.Redis] = None
+        self.redis: Optional[redis.Redis] = None
 
-    async def get_redis(self) -> aioredis.Redis:
+    async def get_redis(self) -> redis.Redis:
         if self.redis is None:
-            self.redis = aioredis.from_url(self.url, decode_responses=True)
+            self.redis = redis.from_url(self.url, decode_responses=True)
         return self.redis
 
     async def close(self):

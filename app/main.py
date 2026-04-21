@@ -133,7 +133,8 @@ async def login_submit(
             context={"next": next, "error": "Invalid username or password"},
         )
 
-    redirect_url = next or "/"
+    from urllib.parse import unquote
+    redirect_url = unquote(next) if next else "/"
     response = RedirectResponse(url=redirect_url, status_code=302)
     
     # Use a session token instead of plain user id
