@@ -87,7 +87,7 @@ jobs:
             # uv run alembic upgrade head
 
             # 3. 启动命令 (请根据您服务器的实际管理工具解除注释并修改)
-            uv run uvicorn app.main:app --reload --port 8000
+            # uv run uvicorn app.main:app --reload --port 8000
             
             # 方案A: 使用 Supervisor 或 Systemd (推荐生产环境使用，确保 systemd 指向 .venv/bin/uvicorn)
             # sudo systemctl restart oauth2-server
@@ -97,4 +97,4 @@ jobs:
             # nohup uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 > app.log 2>&1 &
             
             # 方案C: 使用 pm2
-            # pm2 restart oauth2-server || pm2 start .venv/bin/uvicorn --name "oauth2-server" -- app.main:app --host 0.0.0.0 --port 8000
+            pm2 restart oauth2-server || pm2 start ecosystem.config.js
