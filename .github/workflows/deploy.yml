@@ -44,18 +44,16 @@ jobs:
     if: github.ref == 'refs/heads/main'
     
     steps:
-      # 下载 build 出来的 zip
+      # 下载 build 出来的 zip，指定具体的下载目录避免影响 Runner 根目录
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
           name: fastapi-app
-
-      # - name: Unzip package
-      #   run: unzip -o fastapi-app.zip -d ./
+          path: ./deploy-artifact
 
       # 查看文件（验证是否成功拿到）
       - name: List files
-        run: ls -la 
+        run: ls -la ./deploy-artifact
 
       - name: Deploy and Start Server locally
         run: |
@@ -63,7 +61,7 @@ jobs:
           mkdir -p $TARGET_DIR
           
           # 1. 解压最新上传的包直接到目标目录
-          unzip -o fastapi-app.zip -d $TARGET_DIR
+          unzip -o ./deploy-artifact/fastapi-app.zip -d $TARGET_DIR
           
           # 2. 进入目录并使用 uv 同步依赖
           cd $TARGET_DIR
