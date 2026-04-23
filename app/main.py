@@ -2,11 +2,11 @@ import re
 from fastapi import Depends, FastAPI, Form, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import User
+from app.models import User, OAuthClient, OAuthToken
 from app.routers import clients, oauth2, users
 from app.security import hash_password, verify_password, create_session_token
 
@@ -150,18 +150,26 @@ async def login_submit(
     return response
 
 
-@app.get("/")
-async def root():
-    return {
-        "name": "OAuth2 Authorization Server",
-        "docs": "/docs",
-        "endpoints": {
-            "register": "POST /users/register",
-            "login": "GET /login",
-            "register_client": "GET /clients/register",
-            "authorize": "GET /oauth2/authorize",
-            "token": "POST /oauth2/token",
-            "introspect": "POST /oauth2/introspect",
-            "revoke": "POST /oauth2/revoke",
-        },
+@app.get("/", response_class=HTMLResponse)
+async def root(request: Request, db: AsyncSession = Depends(get_db)):
+    users_count = await db.scalar(select(func.count(User.id)))
+    clients_count = await db.scalar(select(func.count(OAuthClient.id)))
+    tokens_count = await db.scalar(select(func.count(OAuthToken.id)))
+
+    # Count active vs revoked tokens
+    active_tokens_count = await db.scalar(
+        select(func.count(OAuthToken.id)).where(OAuthToken.revoked == False)
+    )
+
+    stats = {
+        "users": users_count or 0,
+        "clients": clients_count or 0,
+        "total_tokens": tokens_count or 0,
+        "active_tokens": active_tokens_count or 0,
     }
+
+    return templates.TemplateResponse(
+        name="index.html", 
+        request=request, 
+        context={"stats": stats}
+    )
