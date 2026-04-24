@@ -26,7 +26,7 @@ async def register_client_page(request: Request):
     # This requires user to be logged in via session cookie
     # Since we don't have a global dependency for HTML routes yet, we check cookie manually or use redirect
     from app.routers.oauth2 import _get_session_user_id
-    user_id = _get_session_user_id(request)
+    user_id = await _get_session_user_id(request)
     if not user_id:
         from urllib.parse import quote
         full_path = request.url.path + ("?" + request.url.query if request.url.query else "")
@@ -45,7 +45,7 @@ async def register_client_submit(
     db: AsyncSession = Depends(get_db),
 ):
     from app.routers.oauth2 import _get_session_user_id
-    user_id = _get_session_user_id(request)
+    user_id = await _get_session_user_id(request)
     if not user_id:
         raise HTTPException(status_code=401, detail="Not logged in")
 

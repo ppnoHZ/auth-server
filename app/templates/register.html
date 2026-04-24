@@ -10,18 +10,12 @@
         </svg>
         <h1>Create Account</h1>
     </div>
-    {% if error %}
-    <p class="error">{{ error }}</p>
-    {% endif %}
-    {% if success %}
-    <p class="success">{{ success }}</p>
-    {% endif %}
-    <form method="post" action="/register">
-        <div class="form-group">
+    <form method="post" action="/register" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem;">
+        <div class="form-group" style="grid-column: span 2;">
             <label for="username">Username</label>
             <input type="text" id="username" name="username" required minlength="3" maxlength="50" pattern="[a-zA-Z0-9_]+" title="只能包含字母、数字和下划线" autofocus>
         </div>
-        <div class="form-group">
+        <div class="form-group" style="grid-column: span 2;">
             <label for="email">Email</label>
             <input type="email" id="email" name="email" required maxlength="100">
         </div>
@@ -33,7 +27,24 @@
             <label for="confirm_password">Confirm Password</label>
             <input type="password" id="confirm_password" name="confirm_password" required minlength="6" maxlength="100">
         </div>
-        <button type="submit">Sign Up</button>
+        
+        <div class="form-group" style="grid-column: span 2;">
+            <label for="captcha_code">Verification Code</label>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="text" id="captcha_code" name="captcha_code" required minlength="4" maxlength="4" style="flex: 1;" placeholder="Enter code">
+                <input type="hidden" name="captcha_id" value="{{ captcha_id }}">
+                <img src="/captcha/{{ captcha_id }}" alt="captcha" style="height: 38px; border-radius: 4px; cursor: pointer; border: 1px solid var(--border-color);" onclick="this.src='/captcha/{{ captcha_id }}?v='+new Date().getTime();">
+            </div>
+        </div>
+
+        {% if error %}
+        <p class="error" style="grid-column: span 2; margin-top: 0.5rem; margin-bottom: 0;">{{ error }}</p>
+        {% endif %}
+        {% if success %}
+        <p class="success" style="grid-column: span 2; margin-top: 0.5rem; margin-bottom: 0;">{{ success }}</p>
+        {% endif %}
+
+        <button type="submit" style="grid-column: span 2;">Sign Up</button>
     </form>
     <p class="link">Already have an account? <a href="/login">Sign In</a></p>
 </div>

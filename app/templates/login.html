@@ -10,9 +10,6 @@
         </svg>
         <h1>Welcome Back</h1>
     </div>
-    {% if error %}
-    <p class="error">{{ error }}</p>
-    {% endif %}
     <form method="post" action="/login">
         <input type="hidden" name="next" value="{{ next }}">
         <div class="form-group">
@@ -23,6 +20,9 @@
             <label for="password">Password</label>
             <input type="password" id="password" name="password" required>
         </div>
+        {% if error %}
+        <p class="error" style="margin-top: 0.5rem; margin-bottom: 0;">{{ error }}</p>
+        {% endif %}
         <button type="submit">Sign In</button>
     </form>
     <p class="link">Don't have an account? <a href="/register">Sign Up</a></p>

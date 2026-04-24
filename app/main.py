@@ -1,6 +1,10 @@
 import re
+import io
+import uuid
+import random
+import string
 from fastapi import Depends, FastAPI, Form, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +13,7 @@ from app.database import get_db
 from app.models import User, OAuthClient, OAuthToken
 from app.routers import clients, oauth2, users
 from app.security import hash_password, verify_password, create_session_token
+from app.redis import redis_manager
 
 app = FastAPI(title="OAuth2 Authorization Server", version="1.0.0")
 templates = Jinja2Templates(directory="app/templates")
@@ -22,9 +27,29 @@ app.include_router(oauth2.router)
 # ---------------------------------------------------------------------------
 # Register pages (top-level /register)
 # ---------------------------------------------------------------------------
+@app.get("/captcha/{captcha_id}", include_in_schema=False)
+async def generate_captcha(captcha_id: str):
+    from captcha.image import ImageCaptcha
+    # Only keep simple letters and numbers to avoid confusion (like O and 0, or I and 1)
+    chars = "ABCDEFGHJKLMNPRSTUVWXYZ23456789"
+    code = ''.join(random.choices(chars, k=4))
+    
+    # Store the captcha text in Redis mapped to the captcha_id
+    await redis_manager.set_json(f"captcha:{captcha_id}", code.lower(), expire=300)
+    
+    image = ImageCaptcha(width=160, height=60)
+    data = image.generate(code)
+    return StreamingResponse(io.BytesIO(data.getvalue()), media_type="image/png")
+
+
 @app.get("/register", response_class=HTMLResponse, include_in_schema=False)
 async def register_page(request: Request):
-    return templates.TemplateResponse(name="register.html", request=request, context={})
+    captcha_id = str(uuid.uuid4())
+    return templates.TemplateResponse(
+        name="register.html", 
+        request=request, 
+        context={"captcha_id": captcha_id}
+    )
 
 
 @app.post("/register", include_in_schema=False)
@@ -34,24 +59,43 @@ async def register_submit(
     email: str = Form(...),
     password: str = Form(...),
     confirm_password: str = Form(...),
+    captcha_id: str = Form(...),
+    captcha_code: str = Form(...),
     db: AsyncSession = Depends(get_db),
 ):
+    # Verify captcha first
+    expected_code = await redis_manager.get_json(f"captcha:{captcha_id}")
+    if expected_code is None:
+        return templates.TemplateResponse(
+            name="register.html", request=request,
+            context={"error": "验证码已过期，请刷新重试", "captcha_id": str(uuid.uuid4())},
+        )
+    
+    # Optional: Delete to prevent reuse
+    await redis_manager.delete(f"captcha:{captcha_id}")
+    
+    if captcha_code.lower() != expected_code:
+        return templates.TemplateResponse(
+            name="register.html", request=request,
+            context={"error": "验证码错误，请重新输入", "captcha_id": str(uuid.uuid4())},
+        )
+
     if not username or len(username) < 3 or len(username) > 50 or not re.match(r"^[a-zA-Z0-9_]+$", username):
         return templates.TemplateResponse(
             name="register.html", request=request,
-            context={"error": "用户名只能包含字母、数字和下划线，且长度必须在3-50个字符之间"},
+            context={"error": "用户名只能包含字母、数字和下划线，且长度必须在3-50个字符之间", "captcha_id": str(uuid.uuid4())},
         )
         
     if not email or len(email) > 100 or not re.match(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)", email):
         return templates.TemplateResponse(
             name="register.html", request=request,
-            context={"error": "请输入有效的电子邮件地址"},
+            context={"error": "请输入有效的电子邮件地址", "captcha_id": str(uuid.uuid4())},
         )
         
     if len(password) < 6 or len(password) > 100:
         return templates.TemplateResponse(
             name="register.html", request=request,
-            context={"error": "密码长度必须在6-100个字符之间"},
+            context={"error": "密码长度必须在6-100个字符之间", "captcha_id": str(uuid.uuid4())},
         )
         
     if not (any(c.islower() for c in password) and 
@@ -60,13 +104,13 @@ async def register_submit(
             any(not c.isalnum() for c in password)):
         return templates.TemplateResponse(
             name="register.html", request=request,
-            context={"error": "密码必须包含大写字母、小写字母、数字和至少一个特殊字符"},
+            context={"error": "密码必须包含大写字母、小写字母、数字和至少一个特殊字符", "captcha_id": str(uuid.uuid4())},
         )
 
     if password != confirm_password:
         return templates.TemplateResponse(
             name="register.html", request=request,
-            context={"error": "两次输入的密码不一致"},
+            context={"error": "两次输入的密码不一致", "captcha_id": str(uuid.uuid4())},
         )
 
     result = await db.execute(
@@ -75,7 +119,7 @@ async def register_submit(
     if result.scalar_one_or_none():
         return templates.TemplateResponse(
             name="register.html", request=request,
-            context={"error": "用户名或邮箱已被注册"},
+            context={"error": "用户名或邮箱已被注册", "captcha_id": str(uuid.uuid4())},
         )
 
     user = User(username=username, email=email, hashed_password=hash_password(password))
@@ -86,7 +130,7 @@ async def register_submit(
         await db.rollback()
         return templates.TemplateResponse(
             name="register.html", request=request,
-            context={"error": "注册失败，请稍后再试"},
+            context={"error": "注册失败，请稍后再试", "captcha_id": str(uuid.uuid4())},
         )
 
     return templates.TemplateResponse(
