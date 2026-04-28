@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.dependencies import authenticate_client
+from app.dependencies import authenticate_client, get_current_user
 from app.models import OAuthClient, OAuthToken, User
 from app.schemas import TokenIntrospectResponse, TokenResponse
 from app.security import (
@@ -367,6 +367,18 @@ async def introspect_token(
         username=username,
         exp=int(token_record.expires_at.timestamp()),
     )
+
+
+# ---------------------------------------------------------------------------
+# GET /oauth2/userinfo — OpenID Connect-style userinfo
+# ---------------------------------------------------------------------------
+@router.get("/userinfo")
+async def userinfo(current_user: User = Depends(get_current_user)):
+    return {
+        "sub": current_user.id,
+        "preferred_username": current_user.username,
+        "email": current_user.email,
+    }
 
 
 # ---------------------------------------------------------------------------
