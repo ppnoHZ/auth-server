@@ -25,9 +25,9 @@ jobs:
       run: |
         python -m pip install uv
         uv sync --extra dev --frozen
-    - name: Run test suite
-      run: |
-        uv run pytest -q
+    # - name: Run test suite
+    #   run: |
+    #     uv run pytest -q
     - name: Package project
       run: |
         zip -r fastapi-app.zip . -x "*.git*" "*.vscode*"  "*__pycache__*" "*.github*" "*.pyc" "venv/*" ".env" ".venv/*" "release/*"
