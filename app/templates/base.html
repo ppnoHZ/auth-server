@@ -69,29 +69,7 @@
         }
         .header {
             text-align: center;
-            margin-bottom: 28px;
-        }
-        .header svg {
-            width: 52px;
-            height: 52px;
-            color: var(--primary);
-            margin: 0 auto 14px;
-            display: block;
-            background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
-            padding: 10px;
-            border-radius: 18px;
-        }
-        .eyebrow {
-            display: inline-block;
-            margin-bottom: 10px;
-            padding: 4px 10px;
-            border-radius: 999px;
-            background: #e0ecff;
-            color: var(--primary);
-            font-size: 0.78rem;
-            font-weight: 700;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
+            margin-bottom: 24px;
         }
         h1 {
             font-size: clamp(1.55rem, 2vw, 2.1rem);
@@ -127,9 +105,45 @@
             font-weight: 600;
         }
         .field-hint {
-            margin-top: 0.4rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+            margin-top: 6px;
             color: var(--text-muted);
             font-size: 0.82rem;
+            line-height: 1.4;
+        }
+        .field-hint::before {
+            content: "ℹ";
+            font-size: 0.85rem;
+            opacity: 0.7;
+            display: inline-block;
+            margin-top: -1px;
+        }
+        .custom-error {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+            margin-top: 6px;
+            padding: 8px 10px;
+            background: #fef2f2;
+            border-left: 3px solid var(--danger);
+            border-radius: 4px;
+            color: var(--danger);
+            font-size: 0.82rem;
+            font-weight: 500;
+            line-height: 1.4;
+            animation: slideDown 0.2s ease-out;
+        }
+        .custom-error::before {
+            content: "⚠";
+            font-size: 0.9rem;
+            display: inline-block;
+            margin-top: -1px;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         input[type="text"], input[type="password"], input[type="email"], textarea {
             width: 100%; 
@@ -252,9 +266,54 @@
             }
         }
         {% block extra_css %}{% endblock %}
+    <style>
+        /* ... existing base styles are above ... */
+        .lang-toggle {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid var(--border-color);
+            padding: 4px;
+            border-radius: 999px;
+            display: flex;
+            gap: 2px;
+            z-index: 1000;
+            box-shadow: var(--shadow-sm);
+            backdrop-filter: blur(12px);
+        }
+        .lang-btn {
+            border: none;
+            background: transparent;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            width: auto;
+            box-shadow: none;
+            margin: 0;
+        }
+        .lang-btn:hover:not(.active) {
+            color: var(--text-main);
+            transform: none;
+            background: rgba(0, 0, 0, 0.03);
+        }
+        .lang-btn.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+            transform: translateY(-1px);
+        }
     </style>
 </head>
 <body>
+    <div class="lang-toggle" aria-label="Language Toggle">
+        <button type="button" class="lang-btn active" data-lang="en" onclick="setLanguage('en')">EN</button>
+        <button type="button" class="lang-btn" data-lang="zh" onclick="setLanguage('zh')">中文</button>
+    </div>
     {% block body %}
     <div class="page-shell {% block page_shell_class %}{% endblock %}">
         <main class="page-main" id="main-content">
@@ -262,5 +321,223 @@
         </main>
     </div>
     {% endblock %}
+    <script>
+        // Form optimization logic
+        document.addEventListener('DOMContentLoaded', () => {
+            const forms = document.querySelectorAll('form');
+            forms.forEach(form => {
+                // If the form has novalidate, we will handle validation manually
+                form.addEventListener('submit', function(e) {
+                    let hasError = false;
+                    
+                    // Clear previous custom error messages
+                    form.querySelectorAll('.custom-error').forEach(el => el.remove());
+                    
+                    // Iterate over all form elements
+                    Array.from(form.elements).forEach(element => {
+                        if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+                            if (!element.checkValidity()) {
+                                hasError = true;
+                                const errorMsg = document.createElement('div');
+                                errorMsg.className = 'custom-error';
+                                errorMsg.innerText = element.title || element.validationMessage || 'This field is invalid';
+                                
+                                // Insert error message after the element or its parent
+                                element.parentNode.appendChild(errorMsg);
+                            }
+                        }
+                    });
+
+                    // Password confirmation check if both exist
+                    const pwd = form.querySelector('input[name="password"]');
+                    const confirmPwd = form.querySelector('input[name="confirm_password"]');
+                    if (pwd && confirmPwd && pwd.value !== confirmPwd.value) {
+                        hasError = true;
+                        if (!confirmPwd.parentNode.querySelector('.custom-error')) {
+                            const errorMsg = document.createElement('div');
+                            errorMsg.className = 'custom-error';
+                            errorMsg.innerText = currentLang === 'zh' ? '密码不匹配' : 'Passwords do not match';
+                            confirmPwd.parentNode.appendChild(errorMsg);
+                        }
+                    }
+
+                    if (hasError) {
+                        e.preventDefault();
+                        return;
+                    }
+
+                    // Loading state on button
+                    const btn = form.querySelector('button[type="submit"]');
+                    if (btn) {
+                        btn.dataset.originalText = btn.innerText;
+                        btn.innerText = currentLang === 'zh' ? "请稍候..." : "Please wait...";
+                        btn.style.opacity = '0.8';
+                        btn.style.cursor = 'not-allowed';
+                        setTimeout(() => { btn.disabled = true; }, 10);
+                    }
+                });
+            });
+        });
+
+        // i18n logic
+        const translations = {
+            "zh": {
+                "Username": "用户名",
+                "Password": "密码",
+                "Confirm Password": "确认密码",
+                "Email": "邮箱",
+                "Create your account": "创建您的账户",
+                "Welcome back": "欢迎回来",
+                "Account Access": "账户访问",
+                "New User": "新用户",
+                "Verification Code": "验证码",
+                "Create account": "注册",
+                "Sign in": "登录",
+                "Already registered?": "已有账号？",
+                "No account yet?": "没有账号？",
+                "Create one": "立即注册",
+                "Back to dashboard": "返回仪表盘",
+                "OAuth2 server dashboard": "OAuth2 服务器仪表盘",
+                "OAuth2 Control Center": "OAuth2 控制中心",
+                "Track user and client activity, then jump directly into sign-in, registration, or client provisioning.": "追踪用户与应用活动，或直接跳转到登录、注册及客户端凭证分配。",
+                "Registered users": "注册用户",
+                "Accounts that can sign in and authorize applications.": "能够登录并授权应用账号。",
+                "OAuth clients": "OAuth客户端",
+                "Applications currently registered against the server.": "目前注册在服务器上的应用程序。",
+                "Active tokens": "活动令牌",
+                "Non-revoked tokens still valid for API access.": "未被撤销且仍对 API 访问有效的令牌。",
+                "Issued tokens": "已发放令牌",
+                "Total access and refresh tokens created over time.": "随时间创建的所有访问和刷新令牌总数。",
+                "Client Setup": "客户端设置",
+                "Create an OAuth client": "创建 OAuth 客户端",
+                "Register callback URLs, choose grant types, and generate credentials for your application.": "注册回调 URL，选择授权类型，并为应用程序生成凭证。",
+                "Client Name": "客户端名称",
+                "Redirect URIs": "重定向 URIs (每行一个)",
+                "Enter one callback URL per line.": "每行输入一个回调 URL。",
+                "Consent": "授权同意",
+                "Review authorization request": "检查授权请求",
+                "wants access to your account data and API capabilities.": "请求访问您的账户数据和 API 操作权限。",
+                "This application is requesting access to:": "该应用程序请求访问以下内容：",
+                "OAuth 2.0 flow": "OAuth 2.0 流程",
+                "One-time user consent": "一次性用户授权",
+                "Sign in to continue to the authorization server and your client management pages.": "登录以继续访问您的客户端管理页面以及授权服务器。",
+                "Use a strong password and complete the captcha to protect the registration flow.": "请使用强密码并输入验证码以完成注册流程。",
+                "3-50 characters. Letters, numbers and underscore only.": "3-50个字符。仅支持字母、数字和下划线。",
+                "Include uppercase, lowercase, number and one symbol.": "包含大写、小写字母，数字及一个特殊符号。",
+                "Click the image to refresh if the code is unclear.": "若验证码不清晰请点击图片刷新。",
+                "Enter the 4-character code": "输入 4 位验证码",
+                "Passwords do not match": "密码不相符",
+                "Client created successfully.": "客户端创建成功。",
+                "Store these credentials now. The client secret is shown only once.": "请立即妥善保存凭据，客户端 Secret 限定展示一次。",
+                "Client ID": "客户端 ID",
+                "Client Secret": "客户端 Secret",
+                "Create another client": "创建另一客户端",
+                "Quick actions": "快捷操作",
+                "Register client app": "注册客户端应用",
+                "Set up a new OAuth application with callback URLs": "使用回调 URL 设置一个新的 OAuth 应用程序",
+                "Check active sessions": "检查活动会话",
+                "View and revoke currently valid access tokens": "查看并撤销当前有效的访问令牌",
+                "Review scopes": "审查作用域",
+                "Check available authorization scopes and permissions": "检查可用的授权范围和权限",
+                "At a glance": "概览",
+                "The dashboard surfaces the current footprint of the authorization service and shortcuts to common actions.": "仪表盘显示当前授权服务的使用情况，并提供指向常见操作的快捷方式。",
+                "Most active resource": "最活跃资源",
+                "Tokens": "令牌",
+                "Recommended next step": "推荐的下一步操作",
+                "Public API docs": "公共 API 文档",
+                "Available via Swagger UI": "可通过 Swagger UI 访问",
+                "Start a user journey, onboard a client, or inspect the API contract.": "开始用户旅程、接入客户端或检查 API 契约。",
+                "Authenticate as an end user and continue interrupted consent flows.": "作为最终用户进行身份验证，并继续中断的授权流程。",
+                "Register user": "注册用户",
+                "Create a new account with email, password, and captcha verification.": "使用邮箱、密码和验证码创建新账户。",
+                "Generate a client ID and secret for your OAuth-enabled application.": "为启用 OAuth 的应用程序生成客户端 ID 和 Secret。",
+                "API docs": "API 文档",
+                "Open the interactive OpenAPI documentation in a new tab.": "在新标签页中打开交互式 OpenAPI 文档。",
+                "My Awesome App": "我的超赞应用",
+                "http://localhost:3000/callback\nhttps://app.example.com/oauth/callback": "http://localhost:3000/callback\nhttps://app.example.com/oauth/callback",
+                "Grant Types": "授权类型",
+                "Authorization Code": "授权码模式 (Authorization Code)",
+                "Client Credentials": "客户端凭证 (Client Credentials)",
+                "Refresh Token": "刷新令牌 (Refresh Token)",
+                "Password grant is disabled by default. Enable `ALLOW_PASSWORD_GRANT` only for legacy clients.": "默认情况下已禁用密码模式。请仅为旧版客户端启用 `ALLOW_PASSWORD_GRANT`。",
+                "Scopes": "作用域 (Scopes)",
+                "openid profile email": "openid profile email",
+                "Optional. Separate scopes with spaces.": "可选。使用空格分隔不同的作用域。",
+                "Before you create it": "创建前的准备",
+                "Make sure every redirect URI matches your deployed application exactly.": "确保每个重定向 URI 与您部署的应用程序完全匹配。",
+                "Only enable grant types your application actually uses.": "仅启用该应用程序实际使用的授权类型。",
+                "Treat the generated client secret like a password.": "请像对待密码一样妥善保管生成的客户端 Secret。",
+                "Suggested scopes": "建议的作用域",
+                "Use concise, space-separated names such as": "使用简洁、以空格分隔的名称，比如",
+                ", or": "，或者",
+                " wants access to your account data and API capabilities.": " 请求访问您的账户数据和 API 操作权限。"
+            }
+        };
+
+        const originalTexts = new WeakMap();
+        let currentLang = localStorage.getItem('appLang') || 'en';
+
+        function applyLanguage(lang) {
+            // Update toggle buttons UI
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                if (btn.dataset.lang === lang) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+            let node;
+            while (node = walker.nextNode()) {
+                if (node.parentElement && node.parentElement.tagName === 'SCRIPT') continue;
+                if (node.parentElement && node.parentElement.tagName === 'STYLE') continue;
+                
+                const text = node.nodeValue.trim();
+                if (!text) continue;
+
+                if (!originalTexts.has(node)) {
+                    originalTexts.set(node, text);
+                }
+
+                const orig = originalTexts.get(node);
+                if (lang === 'zh' && translations.zh[orig]) {
+                    node.nodeValue = node.nodeValue.replace(orig, translations.zh[orig]);
+                } else if (lang === 'en') {
+                    node.nodeValue = node.nodeValue.replace(node.nodeValue.trim(), orig);
+                }
+            }
+
+            // Update placeholders
+            document.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(el => {
+                if (!originalTexts.has(el)) {
+                    originalTexts.set(el, el.placeholder);
+                }
+                const orig = originalTexts.get(el);
+                if (lang === 'zh' && translations.zh[orig]) {
+                    el.placeholder = translations.zh[orig];
+                } else if (lang === 'en') {
+                    el.placeholder = orig;
+                }
+            });
+            document.documentElement.lang = lang;
+        }
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem('appLang', currentLang);
+            applyLanguage(currentLang);
+        }
+
+        // Apply on DOM load
+        document.addEventListener('DOMContentLoaded', () => {
+            if (currentLang === 'zh') {
+                applyLanguage(currentLang);
+            } else {
+                // Ensure initial EN button state is correct if not handled by CSS
+                applyLanguage('en');
+            }
+        });
+    </script>
 </body>
 </html>
