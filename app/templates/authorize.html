@@ -3,26 +3,35 @@
 {% block title %}Authorize - OAuth2 Server{% endblock %}
 
 {% block extra_css %}
-.card { max-width: 440px; padding: 2.5rem; }
-.header svg { width: 56px; height: 56px; }
-.subtitle { font-size: 0.95rem; color: var(--text-muted); }
-.app-name { font-weight: 600; color: var(--text-main); }
-
-.content-section { margin-bottom: 2rem; }
-.content-section > p { color: var(--text-main); font-size: 0.95rem; font-weight: 500; margin-bottom: 1rem; }
-
+.card { max-width: 540px; }
+.trust-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+.trust-badge {
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: #4338ca;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+.content-section { margin-bottom: 1.5rem; }
+.content-section > p { color: var(--text-main); font-size: 0.95rem; font-weight: 600; margin-bottom: 0.9rem; }
 .scope-list { 
-    background: #f9fafb; 
+    background: #f8fbff; 
     border: 1px solid var(--border-color);
-    padding: 1rem 1.25rem; 
-    border-radius: 8px; 
+    padding: 1rem 1.15rem; 
+    border-radius: var(--radius-md); 
 }
 .scope-item { 
     display: flex; 
-    align-items: center; 
+    align-items: flex-start; 
     padding: 0.6rem 0; 
     font-size: 0.95rem; 
-    color: var(--text-muted); 
+    color: var(--text-main); 
     border-bottom: 1px solid var(--border-color);
 }
 .scope-item:last-child { border-bottom: none; }
@@ -32,59 +41,84 @@
     font-weight: bold;
     margin-right: 0.75rem;
     font-size: 1.1rem;
+    line-height: 1.4;
 }
-
-.buttons { display: flex; gap: 1rem; margin-top: 2rem; }
-.buttons button { 
-    flex: 1; 
-    margin-top: 0;
-    padding: 0.75rem 1rem; 
-    border: 1px solid transparent;
+.meta-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 14px;
 }
-.btn-allow { 
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+.meta-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--border-color);
+    font-size: 0.9rem;
 }
-
-.btn-deny { 
-    background: white; 
-    color: var(--text-main); 
-    border-color: var(--border-color); 
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+.meta-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
 }
-.btn-deny:hover { 
-    background: #f9fafb; 
-    color: var(--danger);
-    border-color: var(--danger);
+.meta-label {
+    color: var(--text-muted);
 }
-
+.meta-value {
+    color: var(--text-main);
+    font-weight: 600;
+    text-align: right;
+    word-break: break-word;
+}
 .footer-text {
-    margin-top: 1.5rem;
-    text-align: center;
-    font-size: 0.8rem;
+    margin-top: 1.25rem;
+    font-size: 0.84rem;
     color: var(--text-muted);
     line-height: 1.5;
 }
 {% endblock %}
 
 {% block content %}
-<div class="card">
+<section class="card stack" aria-labelledby="authorize-title">
     <div class="header">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <span class="eyebrow">Consent</span>
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
         </svg>
-        <h1>Authorization Request</h1>
-        <p class="subtitle">Continue to <span class="app-name">{{ client_name }}</span></p>
+        <h1 id="authorize-title">Review authorization request</h1>
+        <p class="subtext">{{ client_name }} wants access to your account data and API capabilities.</p>
+        <div class="trust-badges" aria-label="Authorization context">
+            <span class="trust-badge">OAuth 2.0 flow</span>
+            <span class="trust-badge">One-time user consent</span>
+        </div>
     </div>
 
-    <div class="content-section">
+    <div class="panel content-section">
         <p>This application is requesting access to:</p>
-        <div class="scope-list">
+        <div class="scope-list" role="list" aria-label="Requested scopes">
             {% for s in scope.split() %}
-            <div class="scope-item">{{ s }}</div>
+            <div class="scope-item" role="listitem">{{ s }}</div>
             {% endfor %}
             {% if not scope %}
-            <div class="scope-item">Basic profile information</div>
+            <div class="scope-item" role="listitem">Basic profile information</div>
             {% endif %}
+        </div>
+    </div>
+
+    <div class="panel">
+        <p class="subtext">Request details</p>
+        <div class="meta-list">
+            <div class="meta-row">
+                <span class="meta-label">Client ID</span>
+                <span class="meta-value">{{ client_id }}</span>
+            </div>
+            <div class="meta-row">
+                <span class="meta-label">Redirect URI</span>
+                <span class="meta-value">{{ redirect_uri }}</span>
+            </div>
+            <div class="meta-row">
+                <span class="meta-label">State</span>
+                <span class="meta-value">{{ state or 'Not provided' }}</span>
+            </div>
         </div>
     </div>
 
@@ -96,12 +130,12 @@
         <input type="hidden" name="code_challenge" value="{{ code_challenge }}">
         <input type="hidden" name="code_challenge_method" value="{{ code_challenge_method }}">
 
-        <div class="buttons">
-            <button type="submit" name="approved" value="false" class="btn-deny">Cancel</button>
-            <button type="submit" name="approved" value="true" class="btn-allow">Authorize</button>
+        <div class="button-row">
+            <button type="submit" name="approved" value="false" class="button-secondary">Deny</button>
+            <button type="submit" name="approved" value="true">Authorize</button>
         </div>
     </form>
     
-    <p class="footer-text">By clicking Authorize, you allow this application to use your information in accordance with their privacy policy and terms of service.</p>
-</div>
+    <p class="footer-text">Approve only if you trust this application and recognize its redirect address. Your decision will be returned to the requesting client immediately.</p>
+</section>
 {% endblock %}

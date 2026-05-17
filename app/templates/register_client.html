@@ -3,111 +3,165 @@
 {% block title %}Create Client - OAuth2 Server{% endblock %}
 
 {% block extra_css %}
-.card { max-width: 500px; }
-textarea { height: 80px; resize: vertical; }
+.card { max-width: 720px; }
 .checkbox-group { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 0.5rem; }
-.checkbox-item { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; color: var(--text-main); }
+.checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 0.92rem; color: var(--text-main); padding: 10px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: #fff; }
 .checkbox-item input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary); }
-button { margin-top: 1rem; }
 .success-card { 
     background: #ecfdf5; 
     border: 1px solid #a7f3d0; 
     color: #065f46; 
-    padding: 1.25rem; 
-    border-radius: 8px; 
-    margin-bottom: 1.5rem; 
+    padding: 1.4rem; 
+    border-radius: var(--radius-md); 
 }
 .credential-box { 
     background: #ffffff; 
     border: 1px solid #d1d5db; 
-    padding: 0.75rem; 
+    padding: 0.85rem; 
     margin-top: 0.5rem; 
-    border-radius: 6px; 
+    border-radius: var(--radius-sm); 
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; 
     word-break: break-all; 
     font-size: 0.85rem; 
     color: var(--text-main);
 }
-.help-text { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.35rem; }
+.credential-label { color: #065f46; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.detail-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 18px;
+    align-items: start;
+}
+.side-note {
+    display: grid;
+    gap: 14px;
+}
+.checklist {
+    display: grid;
+    gap: 10px;
+    font-size: 0.9rem;
+    color: var(--text-main);
+}
+.checklist-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+.checklist-item::before {
+    content: "•";
+    color: var(--accent);
+    font-size: 1.1rem;
+    line-height: 1.2;
+}
+@media (max-width: 900px) {
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
+}
 {% endblock %}
 
 {% block content %}
-<div class="card">
+<section class="card stack" aria-labelledby="client-title">
     <div class="header">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <span class="eyebrow">Client Setup</span>
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
         </svg>
-        <h1>Create OAuth Client</h1>
+        <h1 id="client-title">Create an OAuth client</h1>
+        <p class="subtext">Register callback URLs, choose grant types, and generate credentials for your application.</p>
     </div>
 
     {% if success %}
     <div class="success-card">
-        <p style="margin-bottom: 0.5rem; font-weight: 600;">Client created successfully!</p>
-        <p style="font-size: 0.9rem; color: #047857;">Please save these credentials safely. You won't be able to see the secret again.</p>
+        <p style="margin-bottom: 0.5rem; font-weight: 700;">Client created successfully.</p>
+        <p style="font-size: 0.92rem; color: #047857;">Store these credentials now. The client secret is shown only once.</p>
         
         <div style="margin-top: 1rem;">
-            <label style="color: #065f46;">Client ID:</label>
+            <p class="credential-label">Client ID</p>
             <div class="credential-box">{{ client_id }}</div>
         </div>
         <div style="margin-top: 1rem;">
-            <label style="color: #065f46;">Client Secret:</label>
+            <p class="credential-label">Client Secret</p>
             <div class="credential-box">{{ client_secret }}</div>
         </div>
     </div>
-    <div class="link">
-        <a href="/clients/register">Create Another</a><span style="color: #cbd5e1; margin: 0 0.5rem;">|</span><a href="/">Back to Home</a>
+    <div class="link-row">
+        <a href="/clients/register">Create another client</a>
+        <a href="/">Back to dashboard</a>
     </div>
     {% else %}
 
     {% if error %}
-    <div class="error">{{ error }}</div>
+    <div class="error" role="alert" aria-live="polite">{{ error }}</div>
     {% endif %}
 
-    <form method="post">
-        <div class="form-group">
-            <label for="client_name">Client Name</label>
-            <input type="text" id="client_name" name="client_name" placeholder="My Awesome App" required autofocus>
-        </div>
+    <div class="detail-grid">
+        <form method="post" class="form-grid">
+            <div class="form-group">
+                <label for="client_name">Client Name</label>
+                <input type="text" id="client_name" name="client_name" value="{{ client_name or '' }}" placeholder="My Awesome App" required autofocus>
+            </div>
 
-        <div class="form-group">
-            <label for="redirect_uris">Redirect URIs</label>
-            <textarea id="redirect_uris" name="redirect_uris" placeholder="http://localhost:3000/callback" required></textarea>
-            <p class="help-text">One URL per line</p>
-        </div>
+            <div class="form-group">
+                <label for="redirect_uris">Redirect URIs</label>
+                <textarea id="redirect_uris" name="redirect_uris" placeholder="http://localhost:3000/callback&#10;https://app.example.com/oauth/callback" required>{{ redirect_uris or '' }}</textarea>
+                <p class="field-hint">Enter one callback URL per line.</p>
+            </div>
 
-        <div class="form-group">
-            <label>Grant Types</label>
-            <div class="checkbox-group">
-                <div class="checkbox-item">
-                    <input type="checkbox" id="gt_code" name="grant_types" value="authorization_code" checked>
-                    <label for="gt_code" style="font-weight: normal; margin-bottom: 0; cursor: pointer;">Auth Code</label>
+            <fieldset class="form-group panel">
+                <label>Grant Types</label>
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="gt_code" name="grant_types" value="authorization_code" {% if selected_grant_types and 'authorization_code' in selected_grant_types %}checked{% elif not selected_grant_types %}checked{% endif %}>
+                        <label for="gt_code" style="font-weight: 500; margin-bottom: 0; cursor: pointer;">Authorization Code</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="gt_cc" name="grant_types" value="client_credentials" {% if selected_grant_types and 'client_credentials' in selected_grant_types %}checked{% endif %}>
+                        <label for="gt_cc" style="font-weight: 500; margin-bottom: 0; cursor: pointer;">Client Credentials</label>
+                    </div>
+                    {% if allow_password_grant %}
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="gt_pw" name="grant_types" value="password" {% if selected_grant_types and 'password' in selected_grant_types %}checked{% endif %}>
+                        <label for="gt_pw" style="font-weight: 500; margin-bottom: 0; cursor: pointer;">Password</label>
+                    </div>
+                    {% endif %}
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="gt_rt" name="grant_types" value="refresh_token" {% if selected_grant_types and 'refresh_token' in selected_grant_types %}checked{% elif not selected_grant_types %}checked{% endif %}>
+                        <label for="gt_rt" style="font-weight: 500; margin-bottom: 0; cursor: pointer;">Refresh Token</label>
+                    </div>
                 </div>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="gt_cc" name="grant_types" value="client_credentials">
-                    <label for="gt_cc" style="font-weight: normal; margin-bottom: 0; cursor: pointer;">Client Credentials</label>
-                </div>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="gt_pw" name="grant_types" value="password">
-                    <label for="gt_pw" style="font-weight: normal; margin-bottom: 0; cursor: pointer;">Password</label>
-                </div>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="gt_rt" name="grant_types" value="refresh_token" checked>
-                    <label for="gt_rt" style="font-weight: normal; margin-bottom: 0; cursor: pointer;">Refresh Token</label>
+            </fieldset>
+            {% if not allow_password_grant %}
+            <p class="field-hint">Password grant is disabled by default. Enable `ALLOW_PASSWORD_GRANT` only for legacy clients.</p>
+            {% endif %}
+
+            <div class="form-group">
+                <label for="scopes">Scopes</label>
+                <input type="text" id="scopes" name="scopes" value="{{ scopes or '' }}" placeholder="openid profile email">
+                <p class="field-hint">Optional. Separate scopes with spaces.</p>
+            </div>
+
+            <button type="submit">Create client</button>
+        </form>
+
+        <aside class="side-note">
+            <div class="panel">
+                <p style="font-weight: 700; margin-bottom: 8px;">Before you create it</p>
+                <div class="checklist">
+                    <div class="checklist-item">Make sure every redirect URI matches your deployed application exactly.</div>
+                    <div class="checklist-item">Only enable grant types your application actually uses.</div>
+                    <div class="checklist-item">Treat the generated client secret like a password.</div>
                 </div>
             </div>
-        </div>
-
-        <div class="form-group">
-            <label for="scopes">Scopes (Optional)</label>
-            <input type="text" id="scopes" name="scopes" placeholder="openid profile email">
-            <p class="help-text">Space separated list of scopes</p>
-        </div>
-
-        <button type="submit">Create Client</button>
-    </form>
-    <div class="link">
-        <a href="/">Back to Home</a>
+            <div class="panel">
+                <p style="font-weight: 700; margin-bottom: 8px;">Suggested scopes</p>
+                <p class="subtext">Use concise, space-separated names such as <strong>openid</strong>, <strong>profile</strong>, or <strong>email</strong>.</p>
+            </div>
+        </aside>
+    </div>
+    <div class="link-row">
+        <a href="/">Back to dashboard</a>
     </div>
     {% endif %}
-</div>
+</section>
 {% endblock %}

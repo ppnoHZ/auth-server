@@ -2,150 +2,260 @@
 
 {% block title %}Dashboard - OAuth2 Server{% endblock %}
 
+{% block page_shell_class %}page-shell--top{% endblock %}
+
 {% block extra_css %}
 .dashboard {
-    max-width: 800px;
+    max-width: 1080px;
     width: 100%;
-    margin: 2rem auto;
+    margin: 0 auto;
 }
 .header {
     text-align: center;
-    margin-bottom: 3rem;
+    margin-bottom: 2.5rem;
 }
 .header svg {
-    width: 64px;
-    height: 64px;
-    color: var(--primary);
-    margin-bottom: 1rem;
-    background: #eff6ff;
-    padding: 14px;
-    border-radius: 50%;
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 1rem;
+    display: block;
+    padding: 16px;
+    border-radius: 22px;
 }
 .header h1 {
-    font-size: 2rem;
-    color: var(--text-main);
-    margin-bottom: 0.5rem;
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    margin-bottom: 0.75rem;
 }
 .header p {
     color: var(--text-muted);
+    max-width: 680px;
+    margin: 0 auto;
+}
+.hero-panel {
+    display: grid;
+    grid-template-columns: 1.3fr 0.9fr;
+    gap: 20px;
+    align-items: stretch;
+    margin-bottom: 2rem;
 }
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2.5rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
 }
 .stat-card {
-    background: var(--card-bg);
-    padding: 1.5rem;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+    padding: 1.35rem;
+    border-radius: var(--radius-md);
     border: 1px solid var(--border-color);
-    text-align: center;
+    text-align: left;
     transition: transform 0.2s, box-shadow 0.2s;
 }
 .stat-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+    box-shadow: var(--shadow-md);
 }
 .stat-value {
-    font-size: 2.5rem;
+    font-size: 2.35rem;
     font-weight: 700;
     color: var(--primary);
     margin-bottom: 0.5rem;
     line-height: 1;
 }
 .stat-label {
-    font-size: 0.95rem;
-    font-weight: 500;
+    font-size: 0.82rem;
+    font-weight: 700;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.08em;
+}
+.stat-note {
+    margin-top: 0.45rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+.overview-card {
+    display: grid;
+    gap: 18px;
+    align-content: start;
+}
+.overview-card h2,
+.quick-links-section h2 {
+    font-size: 1.15rem;
+    margin-bottom: 0.4rem;
+}
+.overview-list {
+    display: grid;
+    gap: 12px;
+}
+.overview-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px dashed var(--border-color);
+}
+.overview-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+.overview-label {
+    color: var(--text-muted);
+}
+.overview-value {
+    font-weight: 700;
+    text-align: right;
+}
+.quick-links-section {
+    display: grid;
+    gap: 16px;
 }
 .quick-links {
-    display: flex;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
     gap: 1rem;
-    flex-wrap: wrap;
 }
 .action-card {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: #ffffff;
-    padding: 1rem 1.5rem;
-    border-radius: 8px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.9rem;
+    background: rgba(255, 255, 255, 0.92);
+    padding: 1.2rem 1.3rem;
+    border-radius: var(--radius-md);
     text-decoration: none;
     color: var(--text-main);
-    font-weight: 500;
+    font-weight: 600;
     border: 1px solid var(--border-color);
     transition: all 0.2s;
 }
 .action-card:hover {
     border-color: var(--primary);
-    color: var(--primary);
-    background: #eff6ff;
+    color: var(--text-main);
+    background: #f8fbff;
+    box-shadow: var(--shadow-md);
 }
 .action-card svg {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
+}
+.action-title {
+    font-size: 1rem;
+}
+.action-copy {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+@media (max-width: 900px) {
+    .hero-panel {
+        grid-template-columns: 1fr;
+    }
+    .quick-links {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 500px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    .quick-links {
+        grid-template-columns: 1fr;
+    }
 }
 {% endblock %}
 
 {% block content %}
-<div class="dashboard">
+<section class="dashboard" aria-labelledby="dashboard-title">
     <div class="header">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <span class="eyebrow">OAuth2 Control Center</span>
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"></path>
         </svg>
-        <h1>OAuth2 Server Dashboard</h1>
-        <p>System Overview & Statistics</p>
+        <h1 id="dashboard-title">OAuth2 server dashboard</h1>
+        <p>Track user and client activity, then jump directly into sign-in, registration, or client provisioning.</p>
     </div>
 
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-value">{{ stats.users }}</div>
-            <div class="stat-label">Registered Users</div>
+    <div class="hero-panel">
+        <div class="stats-grid" aria-label="System statistics">
+            <article class="stat-card panel">
+                <div class="stat-value">{{ stats.users }}</div>
+                <div class="stat-label">Registered users</div>
+                <p class="stat-note">Accounts that can sign in and authorize applications.</p>
+            </article>
+            <article class="stat-card panel">
+                <div class="stat-value">{{ stats.clients }}</div>
+                <div class="stat-label">OAuth clients</div>
+                <p class="stat-note">Applications currently registered against the server.</p>
+            </article>
+            <article class="stat-card panel">
+                <div class="stat-value">{{ stats.active_tokens }}</div>
+                <div class="stat-label">Active tokens</div>
+                <p class="stat-note">Non-revoked tokens still valid for API access.</p>
+            </article>
+            <article class="stat-card panel">
+                <div class="stat-value">{{ stats.total_tokens }}</div>
+                <div class="stat-label">Issued tokens</div>
+                <p class="stat-note">Total access and refresh tokens created over time.</p>
+            </article>
         </div>
-        <div class="stat-card">
-            <div class="stat-value">{{ stats.clients }}</div>
-            <div class="stat-label">OAuth Clients</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">{{ stats.active_tokens }}</div>
-            <div class="stat-label">Active Tokens</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">{{ stats.total_tokens }}</div>
-            <div class="stat-label">Total Issued Tokens</div>
-        </div>
+
+        <aside class="overview-card panel" aria-label="Overview summary">
+            <div>
+                <h2>At a glance</h2>
+                <p class="subtext">The dashboard surfaces the current footprint of the authorization service and shortcuts to common actions.</p>
+            </div>
+            <div class="overview-list">
+                <div class="overview-item">
+                    <span class="overview-label">Most active resource</span>
+                    <span class="overview-value">Tokens</span>
+                </div>
+                <div class="overview-item">
+                    <span class="overview-label">Recommended next step</span>
+                    <span class="overview-value">Register a client app</span>
+                </div>
+                <div class="overview-item">
+                    <span class="overview-label">Public API docs</span>
+                    <span class="overview-value">Available via Swagger UI</span>
+                </div>
+            </div>
+        </aside>
     </div>
 
-    <div class="quick-links">
+    <div class="quick-links-section">
+        <div>
+            <h2>Quick actions</h2>
+            <p class="subtext">Start a user journey, onboard a client, or inspect the API contract.</p>
+        </div>
+
+        <div class="quick-links">
         <a href="/login" class="action-card">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
             </svg>
-            Sign In
+            <span class="action-title">Sign in</span>
+            <span class="action-copy">Authenticate as an end user and continue interrupted consent flows.</span>
         </a>
         <a href="/register" class="action-card">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
             </svg>
-            Register User
+            <span class="action-title">Register user</span>
+            <span class="action-copy">Create a new account with email, password, and captcha verification.</span>
         </a>
         <a href="/clients/register" class="action-card">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
             </svg>
-            Register Client App
+            <span class="action-title">Register client app</span>
+            <span class="action-copy">Generate a client ID and secret for your OAuth-enabled application.</span>
         </a>
         <a href="/docs" class="action-card" target="_blank">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
-            API Docs
+            <span class="action-title">API docs</span>
+            <span class="action-copy">Open the interactive OpenAPI documentation in a new tab.</span>
         </a>
+        </div>
     </div>
-</div>
+</section>
 {% endblock %}

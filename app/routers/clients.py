@@ -8,6 +8,14 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.client_validation import (
+    VALID_GRANT_TYPES,
+    validate_client_name,
+    validate_grant_types,
+    validate_redirect_uris,
+    validate_scopes,
+)
+from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import OAuthClient, User
@@ -32,7 +40,11 @@ async def register_client_page(request: Request):
         full_path = request.url.path + ("?" + request.url.query if request.url.query else "")
         return RedirectResponse(url=f"/login?next={quote(full_path)}", status_code=302)
     
-    return templates.TemplateResponse(name="register_client.html", request=request, context={})
+    return templates.TemplateResponse(
+        name="register_client.html",
+        request=request,
+        context={"allow_password_grant": settings.ALLOW_PASSWORD_GRANT},
+    )
 
 
 @router.post("/register", response_class=HTMLResponse, include_in_schema=False)
@@ -44,26 +56,35 @@ async def register_client_submit(
     scopes: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
-    from app.routers.oauth2 import _get_session_user_id
+    from app.routers.oauth2 import _enforce_same_origin_form, _get_session_user_id
+    _enforce_same_origin_form(request)
     user_id = await _get_session_user_id(request)
     if not user_id:
         raise HTTPException(status_code=401, detail="Not logged in")
 
-    # Basic validation
-    uri_list = [u.strip() for u in redirect_uris.split("\n") if u.strip()]
-    if not uri_list:
-        return templates.TemplateResponse(
-            name="register_client.html", request=request,
-            context={"error": "At least one redirect URI is required", "client_name": client_name}
-        )
+    form_context = {
+        "client_name": client_name,
+        "redirect_uris": redirect_uris,
+        "scopes": scopes or "",
+        "selected_grant_types": grant_types,
+        "allow_password_grant": settings.ALLOW_PASSWORD_GRANT,
+    }
 
-    valid_grant_types = {"authorization_code", "client_credentials", "password", "refresh_token"}
-    for gt in grant_types:
-        if gt not in valid_grant_types:
-            return templates.TemplateResponse(
-                name="register_client.html", request=request,
-                context={"error": f"Invalid grant type: {gt}", "client_name": client_name}
-            )
+    try:
+        normalized_name = validate_client_name(client_name)
+        normalized_grant_types = validate_grant_types(grant_types)
+        uri_list = validate_redirect_uris(
+            [u.strip() for u in redirect_uris.split("\n") if u.strip()],
+            normalized_grant_types,
+        )
+        normalized_scopes = validate_scopes(scopes or "")
+    except HTTPException as exc:
+        return templates.TemplateResponse(
+            name="register_client.html",
+            request=request,
+            context={"error": exc.detail, **form_context},
+            status_code=exc.status_code,
+        )
 
     raw_secret = generate_client_secret()
     client_id = generate_client_id()
@@ -71,10 +92,10 @@ async def register_client_submit(
     client = OAuthClient(
         client_id=client_id,
         client_secret_hash=hash_client_secret(raw_secret),
-        client_name=client_name,
+        client_name=normalized_name,
         redirect_uris=json.dumps(uri_list),
-        grant_types=json.dumps(grant_types),
-        scopes=scopes or "",
+        grant_types=json.dumps(normalized_grant_types),
+        scopes=normalized_scopes,
         owner_id=user_id,
     )
     db.add(client)
@@ -84,7 +105,7 @@ async def register_client_submit(
         await db.rollback()
         return templates.TemplateResponse(
             name="register_client.html", request=request,
-            context={"error": "Failed to create client. Please try again.", "client_name": client_name}
+            context={"error": "Failed to create client. Please try again.", **form_context}
         )
 
     return templates.TemplateResponse(
@@ -92,7 +113,8 @@ async def register_client_submit(
         context={
             "success": True,
             "client_id": client_id,
-            "client_secret": raw_secret
+            "client_secret": raw_secret,
+            "allow_password_grant": settings.ALLOW_PASSWORD_GRANT,
         }
     )
 
@@ -103,22 +125,19 @@ async def create_client(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    valid_grant_types = {"authorization_code", "client_credentials", "password", "refresh_token"}
-    for gt in client_in.grant_types:
-        if gt not in valid_grant_types:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid grant type: {gt}",
-            )
+    normalized_name = validate_client_name(client_in.client_name)
+    normalized_grant_types = validate_grant_types(client_in.grant_types)
+    normalized_redirect_uris = validate_redirect_uris(client_in.redirect_uris, normalized_grant_types)
+    normalized_scopes = validate_scopes(client_in.scopes)
 
     raw_secret = generate_client_secret()
     client = OAuthClient(
         client_id=generate_client_id(),
         client_secret_hash=hash_client_secret(raw_secret),
-        client_name=client_in.client_name,
-        redirect_uris=json.dumps(client_in.redirect_uris),
-        grant_types=json.dumps(client_in.grant_types),
-        scopes=client_in.scopes,
+        client_name=normalized_name,
+        redirect_uris=json.dumps(normalized_redirect_uris),
+        grant_types=json.dumps(normalized_grant_types),
+        scopes=normalized_scopes,
         owner_id=current_user.id,
     )
     db.add(client)

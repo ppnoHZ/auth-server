@@ -33,6 +33,24 @@ class RedisManager:
         r = await self.get_redis()
         await r.delete(key)
 
+    async def get_int(self, key: str) -> Optional[int]:
+        r = await self.get_redis()
+        val = await r.get(key)
+        if val is None:
+            return None
+        return int(val)
+
+    async def increment(self, key: str, expire: int) -> int:
+        r = await self.get_redis()
+        value = await r.incr(key)
+        if value == 1:
+            await r.expire(key, expire)
+        return int(value)
+
+    async def ttl(self, key: str) -> int:
+        r = await self.get_redis()
+        return int(await r.ttl(key))
+
 redis_manager = RedisManager(settings.REDIS_URL)
 
 async def get_redis_client():

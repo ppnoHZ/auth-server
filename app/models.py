@@ -1,10 +1,10 @@
 import uuid
-from datetime import datetime
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import relationship
 
 from app.database import Base
+from app.time_utils import utc_now
 
 
 def generate_uuid() -> str:
@@ -19,7 +19,7 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     clients = relationship("OAuthClient", back_populates="owner")
 
@@ -35,7 +35,7 @@ class OAuthClient(Base):
     grant_types = Column(Text, nullable=False)  # JSON array
     scopes = Column(String(500), default="")
     owner_id = Column(String(36), ForeignKey("users.id"), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     owner = relationship("User", back_populates="clients")
 
@@ -53,6 +53,6 @@ class OAuthToken(Base):
     expires_at = Column(DateTime, nullable=False)
     refresh_token_expires_at = Column(DateTime, nullable=True)
     revoked = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     user = relationship("User")

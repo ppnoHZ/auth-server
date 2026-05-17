@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 # ---- User ----
@@ -23,10 +23,10 @@ class UserResponse(BaseModel):
 
 # ---- OAuth Client ----
 class ClientCreate(BaseModel):
-    client_name: str
+    client_name: str = Field(min_length=1, max_length=120)
     redirect_uris: list[str]
     grant_types: list[str]
-    scopes: str = ""
+    scopes: str = Field(default="", max_length=500)
 
 
 class ClientResponse(BaseModel):

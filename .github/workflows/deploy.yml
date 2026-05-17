@@ -13,19 +13,21 @@ permissions:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python 3.10
+    - name: Set up Python 3.11
       uses: actions/setup-python@v5
       with:
-        python-version: "3.10"
+        python-version: "3.11"
     - name: Install dependencies
       run: |
         python -m pip install uv
-        uv sync
+        uv sync --extra dev --frozen
+    - name: Run test suite
+      run: |
+        uv run pytest -q
     - name: Package project
       run: |
         zip -r fastapi-app.zip . -x "*.git*" "*.vscode*"  "*__pycache__*" "*.github*" "*.pyc" "venv/*" ".env" ".venv/*" "release/*"
@@ -70,5 +72,7 @@ jobs:
           # 使用 uv 的虚拟环境执行数据库迁移 (如果需要)
           # uv run alembic upgrade head
           
-          # 3. 启动或重启服务 (方案C: 使用 pm2)
-          pm2 restart oauth2-server || pm2 start ecosystem.config.js
+          # 3. 启动或重启服务
+          # 如果您不使用 pm2，请将下面命令替换为 systemd/supervisor 对应的重启命令。
+          pm2 describe oauth2-server > /dev/null
+          pm2 restart oauth2-server

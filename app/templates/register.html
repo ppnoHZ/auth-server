@@ -2,50 +2,83 @@
 
 {% block title %}Register - OAuth2 Server{% endblock %}
 
+{% block extra_css %}
+.captcha-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 148px;
+    gap: 12px;
+    align-items: start;
+}
+.captcha-image {
+    height: 48px;
+    width: 100%;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    border: 1px solid var(--border-color);
+    background: #fff;
+    object-fit: cover;
+}
+@media (max-width: 720px) {
+    .captcha-row {
+        grid-template-columns: 1fr;
+    }
+}
+{% endblock %}
+
 {% block content %}
-<div class="card">
+<section class="card stack" aria-labelledby="register-title">
     <div class="header">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <span class="eyebrow">New User</span>
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
         </svg>
-        <h1>Create Account</h1>
+        <h1 id="register-title">Create your account</h1>
+        <p class="subtext">Use a strong password and complete the captcha to protect the registration flow.</p>
     </div>
-    <form method="post" action="/register" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem;">
-        <div class="form-group" style="grid-column: span 2;">
+    {% if error %}
+    <div class="error" role="alert" aria-live="polite">{{ error }}</div>
+    {% endif %}
+    {% if success %}
+    <div class="success" role="status" aria-live="polite">{{ success }}</div>
+    {% endif %}
+    <form method="post" action="/register" class="form-grid form-grid--two" novalidate>
+        <div class="form-group span-full">
             <label for="username">Username</label>
-            <input type="text" id="username" name="username" required minlength="3" maxlength="50" pattern="[a-zA-Z0-9_]+" title="只能包含字母、数字和下划线" autofocus>
+            <input type="text" id="username" name="username" value="{{ username or '' }}" required minlength="3" maxlength="50" pattern="[a-zA-Z0-9_]+" title="只能包含字母、数字和下划线" autofocus autocomplete="username" autocapitalize="none" spellcheck="false">
+            <p class="field-hint">3-50 characters. Letters, numbers and underscore only.</p>
         </div>
-        <div class="form-group" style="grid-column: span 2;">
+        <div class="form-group span-full">
             <label for="email">Email</label>
-            <input type="email" id="email" name="email" required maxlength="100">
+            <input type="email" id="email" name="email" value="{{ email or '' }}" required maxlength="100" autocomplete="email" autocapitalize="none" spellcheck="false">
         </div>
         <div class="form-group">
             <label for="password">Password</label>
-            <input type="password" id="password" name="password" required minlength="6" maxlength="100" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}" title="密码必须包含大写字母、小写字母、数字和至少一个特殊字符(且至少6位)">
+            <input type="password" id="password" name="password" required minlength="6" maxlength="100" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}" title="密码必须包含大写字母、小写字母、数字和至少一个特殊字符(且至少6位)" autocomplete="new-password">
+            <p class="field-hint">Include uppercase, lowercase, number and one symbol.</p>
         </div>
         <div class="form-group">
             <label for="confirm_password">Confirm Password</label>
-            <input type="password" id="confirm_password" name="confirm_password" required minlength="6" maxlength="100">
+            <input type="password" id="confirm_password" name="confirm_password" required minlength="6" maxlength="100" autocomplete="new-password">
         </div>
         
-        <div class="form-group" style="grid-column: span 2;">
+        <div class="form-group span-full">
             <label for="captcha_code">Verification Code</label>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <input type="text" id="captcha_code" name="captcha_code" required minlength="4" maxlength="4" style="flex: 1;" placeholder="Enter code">
+            <div class="captcha-row">
+                <div>
+                    <input type="text" id="captcha_code" name="captcha_code" required minlength="4" maxlength="4" value="{{ captcha_code or '' }}" placeholder="Enter the 4-character code" inputmode="text" autocapitalize="characters" spellcheck="false">
+                    <p class="field-hint">Click the image to refresh if the code is unclear.</p>
+                </div>
                 <input type="hidden" name="captcha_id" value="{{ captcha_id }}">
-                <img src="/captcha/{{ captcha_id }}" alt="captcha" style="height: 38px; border-radius: 4px; cursor: pointer; border: 1px solid var(--border-color);" onclick="this.src='/captcha/{{ captcha_id }}?v='+new Date().getTime();">
+                <img src="/captcha/{{ captcha_id }}" alt="Verification code image" class="captcha-image" onclick="this.src='/captcha/{{ captcha_id }}?v='+new Date().getTime();" loading="eager">
             </div>
         </div>
 
-        {% if error %}
-        <p class="error" style="grid-column: span 2; margin-top: 0.5rem; margin-bottom: 0;">{{ error }}</p>
-        {% endif %}
-        {% if success %}
-        <p class="success" style="grid-column: span 2; margin-top: 0.5rem; margin-bottom: 0;">{{ success }}</p>
-        {% endif %}
-
-        <button type="submit" style="grid-column: span 2;">Sign Up</button>
+        <button type="submit" class="span-full">Create account</button>
     </form>
-    <p class="link">Already have an account? <a href="/login">Sign In</a></p>
-</div>
+    <div class="link-row">
+        <span>Already registered?</span>
+        <a href="/login">Sign in</a>
+        <a href="/">Back to dashboard</a>
+    </div>
+</section>
 {% endblock %}

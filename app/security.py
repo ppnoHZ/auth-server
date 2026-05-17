@@ -1,7 +1,7 @@
 import base64
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Optional
 
 import bcrypt
@@ -9,6 +9,7 @@ from jose import JWTError, jwt
 
 from app.config import settings
 from app.redis import redis_manager
+from app.time_utils import utc_now
 
 
 def hash_password(password: str) -> str:
@@ -60,10 +61,10 @@ def create_access_token(
     data: dict, expires_delta: Optional[timedelta] = None
 ) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + (
+    expire = utc_now() + (
         expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire, "jti": secrets.token_urlsafe(16)})
     return jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
@@ -101,7 +102,7 @@ async def create_session_token(user_id: str) -> str:
         "type": "session"
     }
     # Session tokens expire according to a fixed duration
-    expire = datetime.utcnow() + timedelta(seconds=settings.SESSION_EXPIRE_SECONDS)
+    expire = utc_now() + timedelta(seconds=settings.SESSION_EXPIRE_SECONDS)
     to_encode.update({"exp": expire})
     token = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
     
